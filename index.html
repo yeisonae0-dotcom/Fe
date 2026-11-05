@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Problemas, aquí están mis amigos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+
+  body {
+    height: 100dvh;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+    color: #f4f4f8;
+    background: #07070c;
+    position: relative;
+  }
+
+  /* Fondo desenfocado (optimizado: se desenfoca en pequeño y se escala) */
+  .fondo { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
+  .fondo div {
+    position: absolute; left: 37.5%; top: 37.5%; width: 25%; height: 25%;
+    background-size: cover; background-position: center;
+    filter: blur(14px) saturate(1.3) brightness(.4);
+    transform: scale(4.2) translateZ(0);
+    opacity: 0; will-change: opacity;
+    transition: opacity 1.2s ease;
+  }
+  .fondo div.activo { opacity: 1; }
+  .velo {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(120,90,255,.18), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(255,60,140,.14), transparent 55%),
+      rgba(5,5,10,.45);
+  }
+
+  .escena {
+    position: relative; z-index: 2;
+    height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: clamp(12px, 2.6dvh, 28px) 16px clamp(14px, 3.2dvh, 30px);
+    gap: clamp(8px, 1.6dvh, 16px);
+  }
+
+  .cabecera { text-align: center; flex: none; animation: aparecer .9s cubic-bezier(.2,.8,.2,1) both; }
+  h1 {
+    font-size: clamp(1.4rem, 5vw, 2.7rem);
+    font-weight: 800; letter-spacing: -.02em; line-height: 1.1;
+    background: linear-gradient(100deg, #ffffff 20%, #b9a8ff 50%, #ff8fc4 80%);
+    background-size: 220% auto;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: brillo 8s ease-in-out infinite alternate;
+  }
+  .sub {
+    margin-top: 5px;
+    font-size: clamp(.72rem, 2vw, .95rem);
+    letter-spacing: .22em; text-transform: uppercase;
+    color: rgba(255,255,255,.55);
+  }
+  @keyframes brillo { to { background-position: 100% center; } }
+  @keyframes aparecer { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: none; } }
+
+  /* Pasarela */
+  .pasarela {
+    position: relative; flex: 1; min-height: 0;
+    width: 100%; max-width: 920px;
+    perspective: 1500px;
+    animation: aparecer 1s .2s cubic-bezier(.2,.8,.2,1) both;
+    touch-action: pan-y;
+    user-select: none; -webkit-user-select: none;
+  }
+  .slide {
+    position: absolute; top: 3%; bottom: 3%; left: 50%;
+    aspect-ratio: 3 / 4;
+    max-width: 62vw;
+    border-radius: 26px;
+    overflow: hidden;
+    background: rgba(255,255,255,.06);
+    border: 2px solid rgba(90,170,255,.75);
+    box-shadow: 0 0 22px rgba(60,150,255,.55), 0 20px 50px rgba(0,0,0,.6);
+    opacity: 0; pointer-events: none;
+    transform: translate3d(-50%, 0, -500px) scale(.6);
+    transition: transform .8s cubic-bezier(.3,.1,.2,1), opacity .8s;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+  }
+  .slide img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    -webkit-user-drag: none; pointer-events: none;
+  }
+  .slide::before {
+    content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit;
+    background: #000; opacity: 0; pointer-events: none;
+    transition: opacity .8s;
+  }
+  .slide::after {
+    content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit;
+    background: linear-gradient(160deg, rgba(255,255,255,.14), transparent 35%, rgba(0,0,0,.25));
+    pointer-events: none;
+  }
+
+  .slide.activo {
+    transform: translate3d(-50%, 0, 0) scale(1);
+    opacity: 1; z-index: 5; pointer-events: auto;
+    border-color: #5aa9ff;
+    box-shadow: 0 0 18px rgba(77,163,255,.9), 0 0 55px rgba(60,150,255,.6), 0 26px 70px rgba(0,0,0,.65);
+  }
+  .slide.activo img { animation: respirar 8s ease-in-out infinite alternate; will-change: transform; }
+  @keyframes respirar { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+  .slide.izq {
+    transform: translate3d(-50%, 0, -260px) translateX(-72%) rotateY(40deg) scale(.82);
+    opacity: .85; z-index: 3;
+  }
+  .slide.der {
+    transform: translate3d(-50%, 0, -260px) translateX(72%) rotateY(-40deg) scale(.82);
+    opacity: .85; z-index: 3;
+  }
+  .slide.izq::before, .slide.der::before { opacity: .5; }
+
+  .flecha {
+    position: absolute; top: 50%; z-index: 10;
+    width: 46px; height: 46px; margin-top: -23px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.2);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer;
+    transition: transform .25s, background .25s;
+  }
+  .flecha:hover { background: rgba(255,255,255,.2); transform: scale(1.12); }
+  .flecha:active { transform: scale(.94); }
+  .flecha.prev { left: 4px; }
+  .flecha.next { right: 4px; }
+
+  .abajo {
+    flex: none; display: flex; flex-direction: column; align-items: center;
+    gap: clamp(10px, 1.8dvh, 16px);
+    animation: aparecer 1s .4s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .puntos {
+    display: flex; gap: 8px; padding: 8px 14px; border-radius: 30px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  }
+  .punto {
+    width: 8px; height: 8px; border-radius: 8px; border: none; cursor: pointer;
+    background: rgba(255,255,255,.35);
+    transition: width .4s, background .4s;
+  }
+  .punto.activo { width: 26px; background: #fff; }
+
+  .btn-ig {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 14px 32px; border-radius: 60px;
+    font-size: 1rem; font-weight: 600; letter-spacing: .02em;
+    color: #fff; text-decoration: none;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.22);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s;
+  }
+  .btn-ig::before {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
+    opacity: 0; transition: opacity .4s;
+  }
+  .btn-ig::after {
+    content: ''; position: absolute; top: 0; left: -90%; width: 45%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,.35), transparent);
+    transform: skewX(-20deg);
+    animation: destello 4s 2s infinite;
+  }
+  @keyframes destello { 0% { left: -90%; } 35%, 100% { left: 160%; } }
+  .btn-ig:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 16px 50px rgba(220,39,67,.45), inset 0 1px 0 rgba(255,255,255,.25); }
+  .btn-ig:hover::before { opacity: .85; }
+  .btn-ig svg { width: 22px; height: 22px; fill: #fff; flex: none; }
+
+  /* Isla dinámica */
+  #ytplayer { position: fixed; width: 1px; height: 1px; left: -10px; top: -10px; opacity: 0; pointer-events: none; }
+
+  .isla {
+    position: relative; flex: none;
+    width: 190px; height: 48px;
+    transition: width .7s cubic-bezier(.34,1.45,.64,1), height .7s cubic-bezier(.34,1.45,.64,1);
+    animation: caer .9s cubic-bezier(.34,1.45,.64,1) both;
+  }
+  .isla.activa { width: min(310px, 90vw); height: 58px; }
+  @keyframes caer { from { opacity: 0; transform: translateY(-36px) scale(.7); } to { opacity: 1; transform: none; } }
+
+  .halo {
+    position: absolute; inset: -4px; border-radius: 40px;
+    background: rgba(255,255,255,.75);
+    filter: blur(16px); opacity: .45;
+    transition: opacity .6s;
+    will-change: opacity, transform;
+  }
+  .isla.activa .halo { opacity: .8; animation: pulso 2.4s ease-in-out infinite; }
+  @keyframes pulso { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: .95; transform: scale(1.04); } }
+
+  .pastilla {
+    position: relative; z-index: 1;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 8px 0 7px;
+    border-radius: 40px;
+    background: #000;
+    border: 1.5px solid rgba(255,255,255,.95);
+    box-shadow: 0 0 14px rgba(255,255,255,.6), 0 0 38px rgba(255,255,255,.28), inset 0 0 14px rgba(255,255,255,.12);
+    overflow: hidden;
+  }
+  .portada {
+    flex: none; width: 34px; height: 34px; border-radius: 50%;
+    background: #222 center / cover no-repeat url("https://i.ytimg.com/vi/kbzGMCo_aDc/mqdefault.jpg");
+    border: 2px solid #4da3ff;
+    box-shadow: 0 0 8px rgba(77,163,255,.9), 0 0 18px rgba(77,163,255,.5);
+    transition: width .7s, height .7s;
+  }
+  .isla.activa .portada { width: 42px; height: 42px; animation: girar 8s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  .info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  .info b { font-size: .82rem; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info small { font-size: .68rem; color: rgba(255,255,255,.55); }
+
+  .barras { flex: none; display: flex; align-items: center; gap: 2.5px; height: 18px; width: 0; opacity: 0; overflow: hidden; transition: width .5s, opacity .5s; }
+  .isla.activa .barras { width: 22px; opacity: 1; }
+  .barras i { width: 3px; height: 18px; border-radius: 3px; background: #fff; transform: scaleY(.22); animation: ecualizar 1s ease-in-out infinite; animation-play-state: paused; }
+  .isla.activa .barras i { animation-play-state: running; }
+  .barras i:nth-child(2) { animation-delay: -.3s; }
+  .barras i:nth-child(3) { animation-delay: -.6s; }
+  .barras i:nth-child(4) { animation-delay: -.15s; }
+  @keyframes ecualizar { 0%, 100% { transform: scaleY(.22); } 50% { transform: scaleY(1); } }
+
+  .toca {
+    flex: none; width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer;
+    background: #fff; border: none;
+    box-shadow: 0 0 14px rgba(255,255,255,.55);
+    transition: transform .25s;
+  }
+  .toca:hover { transform: scale(1.1); }
+  .toca:active { transform: scale(.92); }
+  .toca svg { width: 16px; height: 16px; fill: #000; }
+  .toca .ic-pausa { display: none; }
+  .isla.activa .toca .ic-play { display: none; }
+  .isla.activa .toca .ic-pausa { display: block; }
+
+  .btn-ig { cursor: pointer; font-family: inherit; }
+
+  /* Panel de perfiles */
+  .panel-fondo {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center; padding: 16px;
+    background: rgba(0,0,0,.55);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    opacity: 0; visibility: hidden;
+    transition: opacity .35s, visibility .35s;
+  }
+  .panel-fondo.abierto { opacity: 1; visibility: visible; }
+
+  .panel {
+    width: min(420px, 100%); max-height: 90dvh;
+    display: flex; flex-direction: column;
+    padding: 18px 14px 14px;
+    border-radius: 28px;
+    background: rgba(12,15,28,.78);
+    border: 1.5px solid rgba(90,170,255,.6);
+    box-shadow: 0 0 22px rgba(77,163,255,.5), 0 0 70px rgba(60,150,255,.3), 0 30px 80px rgba(0,0,0,.6);
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    transform: translateY(30px) scale(.94);
+    transition: transform .5s cubic-bezier(.34,1.35,.64,1);
+  }
+  .panel-fondo.abierto .panel { transform: none; }
+
+  .panel-cab { display: flex; align-items: center; justify-content: space-between; margin: 0 6px 12px; }
+  .panel-cab h2 { font-size: 1.1rem; font-weight: 700; letter-spacing: .02em; }
+  .cerrar {
+    width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08);
+    color: #fff; font-size: 1.1rem; line-height: 1;
+    transition: transform .25s, background .25s;
+  }
+  .cerrar:hover { background: rgba(255,255,255,.2); transform: rotate(90deg); }
+
+  .lista { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 4px 6px 6px; }
+  .perfil {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 14px; border-radius: 18px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    opacity: 0; transform: translateY(16px);
+  }
+  .panel-fondo.abierto .perfil {
+    opacity: 1; transform: none;
+    transition: opacity .5s calc(.1s * var(--i) + .15s), transform .5s calc(.1s * var(--i) + .15s) cubic-bezier(.2,.8,.2,1);
+  }
+  .foto {
+    width: 52px; height: 52px; flex: none; border-radius: 50%; object-fit: cover;
+    border: 2px solid #4da3ff;
+    box-shadow: 0 0 10px rgba(77,163,255,.95), 0 0 26px rgba(77,163,255,.55);
+  }
+  .usuario {
+    min-width: 0; color: #4da3ff; font-weight: 600; font-size: 1rem; text-decoration: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: color .25s, text-shadow .25s;
+  }
+  .usuario:hover { color: #8cc4ff; text-shadow: 0 0 12px rgba(77,163,255,.9); }
+
+  @media (max-width: 480px) {
+    .flecha { width: 38px; height: 38px; margin-top: -19px; font-size: 1.2rem; }
+    .slide { max-width: 68vw; border-radius: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="fondo" id="fondo"></div>
+<div class="velo"></div>
+<div id="ytplayer"></div>
+
+<div class="escena">
+  <div class="isla" id="isla">
+    <div class="halo"></div>
+    <div class="pastilla">
+      <div class="portada"></div>
+      <div class="info">
+        <b id="tituloCancion">Música</b>
+        <small id="estado">Toca para escuchar</small>
+      </div>
+      <div class="barras"><i></i><i></i><i></i><i></i></div>
+      <button class="toca" id="toca" aria-label="Reproducir o pausar">
+        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="ic-pausa" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <header class="cabecera">
+    <h1>¡Problemas, aquí están mis amigos!</h1>
+    <p class="sub">Los más locos · Los más leales</p>
+  </header>
+
+  <section class="pasarela" id="pasarela">
+    <button class="flecha prev" id="prev" aria-label="Anterior">‹</button>
+
+    <div class="slide"><img src="https://i.ibb.co/XxH3DrqZ/IMG-5255.jpg" alt="Mis amigos 1" decoding="async"></div>
+    <div class="slide"><img src="https://i.ibb.co/tPc4nnym/IMG-5246.jpg" alt="Mis amigos 2" decoding="async"></div>
+    <div class="slide"><img src="https://i.ibb.co/BV3gKbq7/IMG-5173.jpg" alt="Mis amigos 3" decoding="async"></div>
+    <div class="slide"><img src="https://i.ibb.co/Y7StFs9X/598-BCE9-B-1-A59-46-CA-B5-F6-0-BAC01-A18-D42.jpg" alt="Mis amigos 4" decoding="async"></div>
+    <div class="slide"><img src="https://i.ibb.co/fYyJvY3M/BBDBDD54-1972-4-D8-B-A85-C-B247-D70-DE9-D6.jpg" alt="Mis amigos 5" decoding="async"></div>
+    <div class="slide"><img src="https://i.ibb.co/j9TXk2rX/73-EF99-E8-E31-F-4-C95-AA77-CC0-CE31-D0531.jpg" alt="Mis amigos 6" decoding="async"></div>
+    <div class="slide"><img src="https://i.ibb.co/Q38qhB9B/IMG-5185.jpg" alt="Mis amigos 7" decoding="async"></div>
+
+    <button class="flecha next" id="next" aria-label="Siguiente">›</button>
+  </section>
+
+  <div class="abajo">
+    <div class="puntos" id="puntos"></div>
+
+    <button class="btn-ig" id="verGente" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.8.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8C2.4 3.9 4 2.4 7.2 2.3 8.4 2.2 8.8 2.2 12 2.2zM12 0C8.7 0 8.3 0 7.1.1 2.7.3.3 2.7.1 7.1 0 8.3 0 8.7 0 12s0 3.7.1 4.9c.2 4.4 2.6 6.8 7 7C8.3 24 8.7 24 12 24s3.7 0 4.9-.1c4.4-.2 6.8-2.6 7-7 .1-1.2.1-1.6.1-4.9s0-3.7-.1-4.9c-.2-4.4-2.6-6.8-7-7C15.7 0 15.3 0 12 0zm0 5.8a6.2 6.2 0 100 12.4 6.2 6.2 0 000-12.4zM12 16a4 4 0 110-8 4 4 0 010 8zm6.4-11.8a1.4 1.4 0 100 2.9 1.4 1.4 0 000-2.9z"/></svg>
+      Ver gente
+    </button>
+  </div>
+</div>
+
+<!-- Panel de perfiles -->
+<div class="panel-fondo" id="panelFondo" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-label="Gente">
+    <div class="panel-cab">
+      <h2>Ver gente</h2>
+      <button class="cerrar" id="cerrar" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="lista">
+      <div class="perfil" style="--i:0">
+        <img class="foto" src="https://i.ibb.co/BHZ8CS1F/IMG-5261.jpg" alt="el_menor_locc">
+        <a class="usuario" href="https://www.instagram.com/el_menor_locc?cplk=MWZwdDczOWM5b3FtOA==" target="_blank" rel="noopener noreferrer">el_menor_locc</a>
+      </div>
+      <div class="perfil" style="--i:1">
+        <img class="foto" src="https://i.ibb.co/6cNb3L7w/IMG-5262.jpg" alt="futranton">
+        <a class="usuario" href="https://www.instagram.com/futranton?cplk=bmRnMWp0NmJrbmNo" target="_blank" rel="noopener noreferrer">futranton</a>
+      </div>
+      <div class="perfil" style="--i:2">
+        <img class="foto" src="https://i.ibb.co/7BR0NrS/IMG-5263.jpg" alt="bribri_617">
+        <a class="usuario" href="https://www.instagram.com/bribri_617?exln=M3N1OXkyeHdkdjRn" target="_blank" rel="noopener noreferrer">bribri_617</a>
+      </div>
+      <div class="perfil" style="--i:3">
+        <img class="foto" src="https://i.ibb.co/Y7StFs9X/598-BCE9-B-1-A59-46-CA-B5-F6-0-BAC01-A18-D42.jpg" alt="el.carnicero_">
+        <a class="usuario" href="https://www.instagram.com/nyc_yeison?vrfl=MWI3bGVrNGRoY3IxYg%3D%3D&amp;utm_source=qr" target="_blank" rel="noopener noreferrer">el.carnicero_</a>
+      </div>
+      <div class="perfil" style="--i:4">
+        <img class="foto" src="https://i.ibb.co/9kg49YhR/IMG-5264.jpg" alt="gisselxggg">
+        <a class="usuario" href="https://www.instagram.com/gisselxggg?srtk=aHl1dWZoYWIwNW9q" target="_blank" rel="noopener noreferrer">gisselxggg</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  const contFondo = document.getElementById('fondo');
+  const contPuntos = document.getElementById('puntos');
+  let actual = 0, timer = null;
+
+  // Precarga de todas las fotos para que no haya tirones
+  slides.forEach(s => { const i = new Image(); i.src = s.querySelector('img').src; });
+
+  const fondos = slides.map(s => {
+    const d = document.createElement('div');
+    d.style.backgroundImage = `url("${s.querySelector('img').src}")`;
+    contFondo.appendChild(d);
+    return d;
+  });
+
+  const puntos = slides.map((_, i) => {
+    const p = document.createElement('button');
+    p.className = 'punto';
+    p.setAttribute('aria-label', 'Foto ' + (i + 1));
+    p.addEventListener('click', () => { ir(i); reiniciar(); });
+    contPuntos.appendChild(p);
+    return p;
+  });
+
+  function render() {
+    slides.forEach((s, i) => {
+      const dif = (i - actual + total) % total;
+      s.classList.toggle('activo', dif === 0);
+      s.classList.toggle('der', dif === 1);
+      s.classList.toggle('izq', dif === total - 1);
+    });
+    puntos.forEach((p, i) => p.classList.toggle('activo', i === actual));
+    fondos.forEach((f, i) => f.classList.toggle('activo', i === actual));
+  }
+
+  function ir(n) { actual = (n + total) % total; render(); }
+  function auto() { clearInterval(timer); timer = setInterval(() => ir(actual + 1), 3500); }
+  function parar() { clearInterval(timer); timer = null; }
+  function reiniciar() { parar(); auto(); }
+
+  document.getElementById('next').addEventListener('click', () => { ir(actual + 1); reiniciar(); });
+  document.getElementById('prev').addEventListener('click', () => { ir(actual - 1); reiniciar(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { ir(actual + 1); reiniciar(); }
+    if (e.key === 'ArrowLeft') { ir(actual - 1); reiniciar(); }
+  });
+
+  const pasarela = document.getElementById('pasarela');
+  pasarela.addEventListener('mouseenter', parar);
+  pasarela.addEventListener('mouseleave', auto);
+
+  let inicioX = 0;
+  pasarela.addEventListener('touchstart', e => { inicioX = e.touches[0].clientX; parar(); }, { passive: true });
+  pasarela.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - inicioX;
+    if (Math.abs(dx) > 40) ir(actual + (dx < 0 ? 1 : -1));
+    auto();
+  });
+
+  // Se detiene si cambias de pestaña (ahorra batería y evita saltos)
+  document.addEventListener('visibilitychange', () => { document.hidden ? parar() : auto(); });
+
+  render();
+  auto();
+
+  // ===== Isla dinámica + música de YouTube =====
+  const VIDEO_ID = 'kbzGMCo_aDc';
+  const isla = document.getElementById('isla');
+  const botonToca = document.getElementById('toca');
+  const tituloCancion = document.getElementById('tituloCancion');
+  const estado = document.getElementById('estado');
+  let yt = null, listo = false;
+
+  function marcar(sonando) {
+    isla.classList.toggle('activa', sonando);
+    estado.textContent = sonando ? 'Reproduciendo' : 'En pausa';
+  }
+  function leerTitulo() {
+    try { const t = yt.getVideoData().title; if (t) tituloCancion.textContent = t; } catch (e) {}
+  }
+
+  const etiqueta = document.createElement('script');
+  etiqueta.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(etiqueta);
+
+  window.onYouTubeIframeAPIReady = function () {
+    yt = new YT.Player('ytplayer', {
+      width: '1', height: '1', videoId: VIDEO_ID,
+      playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, loop: 1, playlist: VIDEO_ID },
+      events: {
+        onReady: () => { listo = true; leerTitulo(); },
+        onStateChange: e => {
+          if (e.data === YT.PlayerState.PLAYING) { marcar(true); leerTitulo(); }
+          else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) marcar(false);
+        },
+        onError: () => { marcar(false); estado.textContent = 'No se pudo reproducir'; }
+      }
+    });
+  };
+
+  botonToca.addEventListener('click', () => {
+    if (!listo) { estado.textContent = 'Cargando...'; return; }
+    if (yt.getPlayerState() === YT.PlayerState.PLAYING) yt.pauseVideo();
+    else yt.playVideo();
+  });
+
+  // ===== Panel "Ver gente" =====
+  const panelFondo = document.getElementById('panelFondo');
+  function abrirPanel() { panelFondo.classList.add('abierto'); panelFondo.setAttribute('aria-hidden', 'false'); }
+  function cerrarPanel() { panelFondo.classList.remove('abierto'); panelFondo.setAttribute('aria-hidden', 'true'); }
+
+  document.getElementById('verGente').addEventListener('click', abrirPanel);
+  document.getElementById('cerrar').addEventListener('click', cerrarPanel);
+  panelFondo.addEventListener('click', e => { if (e.target === panelFondo) cerrarPanel(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPanel(); });
+</script>
+</body>
+</html>
